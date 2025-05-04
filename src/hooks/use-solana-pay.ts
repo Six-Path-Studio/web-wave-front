@@ -4,7 +4,6 @@ import { useConnection, useWallet } from '@solana/wallet-adapter-react';
 import { solanaService } from '../services/solana.service';
 import { productService } from '../services/supabase.service';
 import { toast } from '@/hooks/use-toast';
-import { Product } from '../types/database.types';
 
 export function useSolanaPay() {
   const { connection } = useConnection();
