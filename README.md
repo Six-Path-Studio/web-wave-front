@@ -53,30 +53,41 @@ npm run dev
 
 ## Deployment
 
-The project is hosted at: [https://lovable.dev/projects/c69c81ee-6e70-4155-946d-8bb833561dee](https://lovable.dev/projects/c69c81ee-6e70-4155-946d-8bb833561dee)
+The project can be deployed to any hosting platform that supports static site hosting, such as:
+
+- Vercel
+- Netlify
+- GitHub Pages
+- AWS Amplify
 
 ### Custom Domain Setup
 
 To connect a custom domain to the project:
 
-1. Navigate to Project > Settings > Domains
-2. Click "Connect Domain"
-3. Follow the instructions to configure your DNS settings
+1. Configure your domain's DNS settings to point to your hosting provider
+2. Set up SSL certificates for secure browsing
+3. Add the domain in your hosting provider's settings
 
-For more information, see the [custom domain setup guide](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide).
-
-## Development with Lovable
+## Development Workflow
 
 Changes to this project can be made in several ways:
 
-1. **Using Lovable**: Visit the [project page](https://lovable.dev/projects/c69c81ee-6e70-4155-946d-8bb833561dee) and use the prompting interface. Changes made via Lovable will be committed automatically.
+1. **Using your preferred IDE**: Clone the repository and push changes as you normally would.
 
-2. **Using your preferred IDE**: Clone the repository and push changes as you normally would.
+2. **Directly in GitHub**: Edit files through the GitHub interface.
 
-3. **Directly in GitHub**: Edit files through the GitHub interface.
+3. **Using GitHub Codespaces**: Launch a Codespace for a cloud-based development environment.
 
-4. **Using GitHub Codespaces**: Launch a Codespace for a cloud-based development environment.
+## Building for Production
+
+```sh
+# Build the project for production
+npm run build
+
+# Preview the production build locally
+npm run preview
+```
 
 ## Support
 
-For issues related to the Six Path Studio Store, please contact the development team through the [Lovable project page](https://lovable.dev/projects/c69c81ee-6e70-4155-946d-8bb833561dee).
+For issues related to the Six Path Studio Store, please contact the development team through our official channels or create an issue in the repository.
