@@ -1,9 +1,14 @@
 
 import React from 'react';
-import { useWallet } from '@solana/wallet-adapter-react';
+import { useWallet, useConnection } from '@solana/wallet-adapter-react';
+import { config } from '../config/env';
 
 const SolanaWalletButton: React.FC = () => {
   const { publicKey, wallet, disconnect, select, wallets, connecting } = useWallet();
+  const { connection } = useConnection();
+  
+  // Determine if we're using devnet based on RPC URL
+  const isDevnet = config.SOLANA_RPC_URL.includes('devnet');
   
   const connectWallet = () => {
     if (!wallet) {
@@ -19,18 +24,23 @@ const SolanaWalletButton: React.FC = () => {
   };
 
   return (
-    <button
-      onClick={publicKey ? disconnect : connectWallet}
-      className="sixpath-button bg-sixpath-gold text-sixpath-dark hover:bg-sixpath-green hover:text-white"
-    >
-      {connecting ? (
-        <span>Connecting...</span>
-      ) : publicKey ? (
-        <span>Disconnect ({formatPublicKey(publicKey.toBase58())})</span>
-      ) : (
-        <span>Connect Wallet</span>
+    <div className="flex flex-col items-center">
+      <button
+        onClick={publicKey ? disconnect : connectWallet}
+        className="sixpath-button bg-sixpath-gold text-sixpath-dark hover:bg-sixpath-green hover:text-white"
+      >
+        {connecting ? (
+          <span>Connecting...</span>
+        ) : publicKey ? (
+          <span>Disconnect ({formatPublicKey(publicKey.toBase58())})</span>
+        ) : (
+          <span>Connect Wallet</span>
+        )}
+      </button>
+      {isDevnet && (
+        <span className="mt-1 text-xs text-sixpath-gold bg-sixpath-dark px-2 py-0.5 rounded">Devnet</span>
       )}
-    </button>
+    </div>
   );
 };
 

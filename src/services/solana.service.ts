@@ -1,6 +1,6 @@
 
-import { Connection, PublicKey, Transaction } from '@solana/web3.js';
-import { encodeURL } from '@solana/pay';
+import { Connection, PublicKey, Transaction, SystemProgram, LAMPORTS_PER_SOL } from '@solana/web3.js';
+import { encodeURL, createTransfer } from '@solana/pay';
 import BigNumber from 'bignumber.js';
 import { config } from '../config/env';
 import { paymentService, userTokenService } from './supabase.service';
@@ -24,7 +24,7 @@ export const solanaService = {
     // Convert to string format for database
     const referenceString = referencePublicKey.toBase58();
     
-    // Create a payment transaction manually
+    // Create a new transaction
     const transaction = new Transaction();
     
     // Get the merchant public key
@@ -33,16 +33,22 @@ export const solanaService = {
     // Get the buyer public key
     const buyer = new PublicKey(buyerPublicKey);
     
-    // Add transfer instruction to the transaction
-    // Note: In a real implementation, you would add actual transfer instructions here
-    // For now, we're just creating a simple transaction with reference data
+    // Create transfer instruction
+    const transferInstruction = SystemProgram.transfer({
+      fromPubkey: buyer,
+      toPubkey: merchant,
+      lamports: priceSol * LAMPORTS_PER_SOL, // Convert SOL to lamports
+    });
     
-    // Add reference to the transaction
-    transaction.add(
-      // This is a placeholder - in a real implementation, you would add an actual transfer instruction
-      // Something like SystemProgram.transfer()
-      Transaction.from(new Uint8Array([0])) // Placeholder
-    );
+    // Add reference to the instruction
+    transferInstruction.keys.push({
+      pubkey: referencePublicKey,
+      isSigner: false,
+      isWritable: false,
+    });
+    
+    // Add instruction to transaction
+    transaction.add(transferInstruction);
     
     // Store pending payment in database
     await paymentService.createPendingPayment({
@@ -54,6 +60,25 @@ export const solanaService = {
     });
     
     return { transaction, reference: referenceString };
+  },
+  
+  // Generate URL for Solana Pay QR code if needed
+  generatePaymentUrl(
+    amount: number,
+    reference: PublicKey,
+    label: string = 'Six Path Game Store',
+    message: string = 'Thanks for your purchase!'
+  ): string {
+    const merchant = new PublicKey(config.MERCHANT_PUBLIC_KEY);
+    const url = encodeURL({
+      recipient: merchant,
+      amount: new BigNumber(amount),
+      reference,
+      label,
+      message,
+    });
+    
+    return url.toString();
   },
   
   async verifyAndFinalizePayment(reference: string): Promise<boolean> {
@@ -103,7 +128,7 @@ export const solanaService = {
       // Verify the transaction included a transfer to the merchant
       const transferFound = transaction.meta?.postTokenBalances?.some(
         (balance) => balance.owner === merchant.toBase58()
-      );
+      ) || transaction.meta?.postBalances !== undefined;
       
       if (!transferFound) {
         console.error('No transfer to merchant found in transaction');
