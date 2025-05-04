@@ -3,10 +3,11 @@ import React from 'react';
 
 interface PaymentMethodProps {
   name: string;
-  icon: string;
+  icon: string | React.ReactNode;
   isPopular?: boolean;
   onClick: () => void;
   isSelected?: boolean;
+  isConnected?: boolean;
 }
 
 const PaymentMethod: React.FC<PaymentMethodProps> = ({
@@ -14,7 +15,8 @@ const PaymentMethod: React.FC<PaymentMethodProps> = ({
   icon,
   isPopular = false,
   onClick,
-  isSelected = false
+  isSelected = false,
+  isConnected = false
 }) => {
   return (
     <div
@@ -33,6 +35,9 @@ const PaymentMethod: React.FC<PaymentMethodProps> = ({
       <div className="flex flex-col items-center">
         <div className="text-white text-3xl mb-2">{icon}</div>
         <div className="text-white font-medium">{name}</div>
+        {isConnected && (
+          <div className="mt-1 text-xs text-sixpath-green">Connected</div>
+        )}
       </div>
     </div>
   );
