@@ -3,12 +3,14 @@ import Logo from '../components/Logo';
 import CoinPackage from '../components/CoinPackage';
 import PaymentMethod from '../components/PaymentMethod';
 import SolanaWalletButton from '../components/SolanaWalletButton';
+import QRCodeDialog from '@/components/QRCodeDialog';
 import { toast } from '@/hooks/use-toast';
 import { useSolanaPay } from '@/hooks/use-solana-pay';
-import { productService } from '@/services/supabase.service';
+import { productService, paymentService } from '@/services/supabase.service';
+import { solanaService } from '@/services/solana.service';
 import { Product } from '@/types/database.types';
 import { useConnection, useWallet } from '@solana/wallet-adapter-react';
-import { LAMPORTS_PER_SOL } from '@solana/web3.js';
+import { LAMPORTS_PER_SOL, PublicKey } from '@solana/web3.js';
 
 // Define the step type
 type Step = 1 | 2 | 3 | 4;
@@ -23,6 +25,10 @@ const Index = () => {
   const [termsAccepted, setTermsAccepted] = useState<boolean>(false);
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [qrDialogOpen, setQrDialogOpen] = useState(false);
+  const [paymentUrl, setPaymentUrl] = useState<string>('');
+  const [paymentReference, setPaymentReference] = useState<string>('');
+  const [paymentAmount, setPaymentAmount] = useState<number>(0);
 
   // Get the Solana wallet and connection
   const { connection } = useConnection();
@@ -58,11 +64,6 @@ const Index = () => {
 
     fetchProducts();
   }, []);
-
-  // Define payment methods
-  const paymentMethods = [
-    { id: 'solana', name: 'Solana', icon: 'Ṣ', isPopular: true },
-  ];
 
   // Handle payment processing
   const handlePayment = async () => {
@@ -129,6 +130,109 @@ const Index = () => {
     }
   };
 
+  // Handle payment with QR code
+  const handleQrCodePayment = async () => {
+    if (!username) {
+      toast({
+        title: 'Username Required',
+        description: 'Please enter your username to continue.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (selectedPackage === null) {
+      toast({
+        title: 'Package Required',
+        description: 'Please select a coin package to continue.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    try {
+      // Find the selected product
+      const product = products.find((p) => p.id === selectedPackage);
+      if (!product) {
+        throw new Error('Selected product not found');
+      }
+
+      // Generate a reference for the payment
+      const reference = new Uint8Array(16);
+      window.crypto.getRandomValues(reference);
+      const referencePublicKey = new PublicKey(reference);
+      const referenceString = referencePublicKey.toBase58();
+
+      // Store pending payment in database
+      await paymentService.createPendingPayment({
+        reference: referenceString,
+        username,
+        product_id: product.id,
+        token_amount: product.token_amount,
+        price_sol: product.price_sol,
+      });
+
+      // Generate payment URL
+      const url = solanaService.generatePaymentUrl(
+        product.price_sol,
+        referencePublicKey,
+        'Six Path Game Store',
+        `Purchase ${product.token_amount} tokens`
+      );
+
+      // Set payment details for QR code dialog
+      setPaymentUrl(url);
+      setPaymentReference(referenceString);
+      setPaymentAmount(product.price_sol);
+
+      // Open QR code dialog
+      setQrDialogOpen(true);
+    } catch (error) {
+      console.error('QR code payment error:', error);
+      toast({
+        title: 'Payment Error',
+        description:
+          error instanceof Error ? error.message : 'An unknown error occurred',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  // Handle payment success from QR code
+  const handleQrPaymentSuccess = () => {
+    toast({
+      title: 'Payment Successful!',
+      description: 'Your tokens have been added to your account.',
+      variant: 'success',
+    });
+
+    // Reset form after successful payment
+    setUsername('');
+    setSelectedPackage(null);
+    setSelectedPayment(null);
+    setEmail('');
+    setTermsAccepted(false);
+    setCurrentStep(1);
+    resetStatus();
+  };
+
+  // Define payment methods including QR code option
+  const paymentMethods = [
+    {
+      id: 'wallet',
+      name: 'Wallet',
+      icon: '👛',
+      isPopular: true,
+      isConnected: !!publicKey,
+    },
+    {
+      id: 'qr-code',
+      name: 'QR Code',
+      icon: '📱',
+      isPopular: false,
+    },
+  ];
+
   // Handle next step
   const handleNextStep = () => {
     if (currentStep === 1 && !username) {
@@ -177,8 +281,12 @@ const Index = () => {
         return;
       }
 
-      // Process payment with Solana
-      handlePayment();
+      // Process payment based on selected method
+      if (selectedPayment === 'wallet') {
+        handlePayment();
+      } else if (selectedPayment === 'qr-code') {
+        handleQrCodePayment();
+      }
       return;
     }
 
@@ -395,6 +503,17 @@ const Index = () => {
           </div>
         </div>
       </main>
+
+      {/* QR Code Dialog */}
+      <QRCodeDialog
+        open={qrDialogOpen}
+        onOpenChange={setQrDialogOpen}
+        paymentUrl={paymentUrl}
+        amount={paymentAmount}
+        username={username}
+        reference={paymentReference}
+        onSuccess={handleQrPaymentSuccess}
+      />
     </div>
   );
 };

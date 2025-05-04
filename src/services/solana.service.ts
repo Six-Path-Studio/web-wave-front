@@ -349,4 +349,23 @@ export const solanaService = {
     );
     return false;
   },
+
+  // Check if payment has been confirmed
+  async checkPaymentStatus(reference: string): Promise<boolean> {
+    try {
+      // Get the payment from the database to check if it's already verified
+      const payment = await paymentService.getPaymentByReference(reference);
+
+      // If payment exists and is verified, return true
+      if (payment && payment.verified_at) {
+        return true;
+      }
+
+      // Otherwise, payment exists but not verified yet
+      return false;
+    } catch (error) {
+      console.error('Error checking payment status:', error);
+      return false;
+    }
+  },
 };
