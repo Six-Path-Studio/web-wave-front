@@ -12,6 +12,26 @@ import { Product } from '@/types/database.types';
 import { useConnection, useWallet } from '@solana/wallet-adapter-react';
 import { LAMPORTS_PER_SOL, PublicKey } from '@solana/web3.js';
 
+// helper to send receipt email via Supabase Edge Function
+async function sendReceiptEmail(
+  email: string,
+  username: string,
+  amount: number,
+  reference: string,
+  items?: { name: string; qty: number; price: number }[]
+) {
+  const url = `${import.meta.env.VITE_SUPABASE_FUNCTIONS_URL}/send-receipt`;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, username, amount, reference, items }),
+  });
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.error || 'Failed to send receipt');
+  }
+}
+
 // Define the step type
 type Step = 1 | 2 | 3 | 4;
 
@@ -106,10 +126,29 @@ const Index = () => {
         }
       }
 
-      // Initialize payment
-      const success = await initializePayment(username, product.id);
-
-      if (success) {
+      // Initialize payment, get reference
+      const reference = await initializePayment(username, product.id);
+      if (reference) {
+        try {
+          await sendReceiptEmail(
+            email,
+            username,
+            product.price_sol,
+            reference,
+            []
+          );
+          toast({
+            title: 'Receipt Sent',
+            description: 'Check your inbox for your receipt.',
+            variant: 'success',
+          });
+        } catch (e: any) {
+          toast({
+            title: 'Receipt Error',
+            description: e.message,
+            variant: 'destructive',
+          });
+        }
         // Reset form after successful payment
         setUsername('');
         setSelectedPackage(null);
@@ -200,6 +239,23 @@ const Index = () => {
 
   // Handle payment success from QR code
   const handleQrPaymentSuccess = () => {
+    // call receipt email for QR flow
+    sendReceiptEmail(email, username, paymentAmount, paymentReference)
+      .then(() => {
+        toast({
+          title: 'Receipt Sent',
+          description: 'Check your inbox for your receipt.',
+          variant: 'success',
+        });
+      })
+      .catch((e: any) => {
+        toast({
+          title: 'Receipt Error',
+          description: e.message,
+          variant: 'destructive',
+        });
+      });
+
     toast({
       title: 'Payment Successful!',
       description: 'Your tokens have been added to your account.',
